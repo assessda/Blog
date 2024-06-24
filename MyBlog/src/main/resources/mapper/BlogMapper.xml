@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xc.myblog.mapper.BlogMapper">
+    <!--结果集-->
+    <resultMap id="blogPage" type="com.xc.myblog.entity.Blog">
+
+    </resultMap>
+    <!--根据博客创建时间排序-->
+    <select id="selectPageByCreated" resultMap="blogPage">
+        select * from m_blog
+        <if test="labels != null and labels.size != 0">
+            <where>
+                m_blog.id
+                <foreach item="label" index="index" collection="labels"
+                         open="in (" separator="," close=")">
+                    select m_blog_label.blog_id from m_blog_label where m_blog_label.content = #{label}
+                </foreach>
+            </where>
+        </if>
+        <if test="sortWay == 'createdAsc'">
+            order by m_blog.created asc
+        </if>
+        <if test="sortWay == 'createdDesc'">
+            order by m_blog.created desc
+        </if>
+    </select>
+
+    <!--根据点赞和阅读量排序-->
+    <select id="selectPageOfList" resultMap="blogPage">
+        <if test="sortWay == 'praiseDesc' || sortWay == 'viewsDesc'">
+            <foreach item="id" index="index" collection="ids"
+                     open="(" separator="union all" close=")">
+                select * from m_blog where m_blog.id = #{id}
+                <if test="labels != null and labels.size != 0">
+                    and
+                    m_blog.id
+                    <foreach item="label" index="index" collection="labels"
+                             open="in (" separator="," close=")">
+                        select m_blog_label.blog_id from m_blog_label where m_blog_label.content = #{label}
+                    </foreach>
+                </if>
+            </foreach>
+        </if>
+    </select>
+    <!--根据用户名查询博客-->
+    <select id="selectPageOfUsername" resultMap="blogPage" parameterType="string">
+        select * from m_blog where m_blog.user_id = (select m_user.id from m_user where m_user.username = #{username}) order by m_blog.created desc
+    </select>
+
+    <!--搜索关键字-->
+    <select id="selectPageBySearch" resultMap="blogPage">
+        <if test="sortWay == 'praiseDesc' || sortWay == 'viewsDesc'">
+            <foreach item="id" index="index" collection="ids"
+                     open="(" separator="union all" close=")">
+                select * from m_blog where
+                m_blog.id = #{id} and (m_blog.title like "%"#{param}"%" or m_blog.description like "%"#{param}"%"
+                or m_blog.id in (
+                select m_blog_label.blog_id from m_blog_label where m_blog_label.content like "%"#{param}"%"
+                ))
+            </foreach>
+        </if>
+        <if test="sortWay == 'createdAsc' || sortWay == 'createdDesc'">
+            select * from m_blog where
+            m_blog.title like "%"#{param}"%" or m_blog.description like "%"#{param}"%"
+            or m_blog.id in (
+            select m_blog_label.blog_id from m_blog_label where m_blog_label.content like "%"#{param}"%"
+            )
+            <if test="sortWay == 'createdAsc'    ">
+                order by m_blog.created asc
+            </if>
+            <if test="sortWay == 'createdDesc'">
+                order by m_blog.created desc
+            </if>
+        </if>
+    </select>
+</mapper>
